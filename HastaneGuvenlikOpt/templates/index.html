@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Güvenlik Personeli Yönetimi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 90%;
+            margin: auto;
+            overflow: hidden;
+        }
+        header {
+            background: #333;
+            color: #fff;
+            padding: 1rem 0;
+            text-align: center;
+        }
+        h1 {
+            margin: 0;
+        }
+        .forms-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 2rem 0;
+        }
+        .form-box {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 30%;
+        }
+        .form-box h2 {
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        input[type="text"], input[type="number"], input[type="submit"], input[type="button"], select {
+            width: 100%;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        input[type="submit"], input[type="button"] {
+            background: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover, input[type="button"]:hover {
+            background: #555;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: #fff;
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #f4f4f4;
+        }
+        .personnel-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .personnel-list li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Güvenlik Personeli Yönetimi</h1>
+        </div>
+    </header>
+    <div class="container">
+        <!-- Flex container for forms -->
+        <div class="forms-container">
+            <!-- Yeni Olay Ekle Form -->
+            <div class="form-box">
+                <h2>Yeni Olay Ekle</h2>
+                <form action="{{ url_for('add_olay') }}" method="POST">
+                    <div class="form-group">
+                        <label for="bolge_id">Bölge:</label>
+                        <select id="bolge_id" name="bolge_id">
+                            {% for bolge in bolgeler %}
+                            <option value="{{ bolge['id'] }}">{{ bolge['ad'] }} - Tehlike Seviyesi: {{ bolge['tehlike_seviyesi'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="olay_turu_id">Olay Türü:</label>
+                        <select id="olay_turu_id" name="olay_turu_id">
+                            {% for olay_turu in olay_turleri %}
+                            <option value="{{ olay_turu[0] }}">{{ olay_turu[1] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="olay_siddeti">Olay Şiddeti:</label>
+                        <input type="number" id="olay_siddeti" name="olay_siddeti" min="1" max="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="zaman">Saat:</label>
+                        <input type="text" id="zaman" name="zaman" placeholder="HH:MM" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="personel_id">Personel:</label>
+                        <select id="personel_id" name="personel_id">
+                            {% for personel in personeller %}
+                            <option value="{{ personel[0] }}">{{ personel[1] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="sure">Müdahale Süresi (Dakika):</label>
+                        <input type="number" id="sure" name="sure" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="basari">Başarı:</label>
+                        <input type="number" id="basari" name="basari" min="1" max="10" required>
+                    </div>
+                    <input type="submit" value="Ekle">
+                </form>
+            </div>
+
+            <!-- Yeni Güvenlik Personeli Ekle Form -->
+            <div class="form-box">
+                <h2>Yeni Güvenlik Personeli Ekle</h2>
+                <form action="{{ url_for('add_personel') }}" method="POST">
+                    <div class="form-group">
+                        <label for="personel_ad">Personel Adı:</label>
+                        <input type="text" id="personel_ad" name="personel_ad" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="personel_sure">Müdahale Süresi:</label>
+                        <input type="text" id="personel_sure" name="personel_sure" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="personel_basari">Başarı:</label>
+                        <input type="text" id="personel_basari" name="personel_basari" required>
+                    </div>
+                    <input type="submit" value="Ekle">
+                </form>
+            </div>
+
+            <!-- Yeni Bölge Ekle Form -->
+            <div class="form-box">
+                <h2>Yeni Bölge Ekle</h2>
+                <form action="{{ url_for('add_bolge') }}" method="POST">
+                    <div class="form-group">
+                        <label for="bolge_ad">Bölge Adı:</label>
+                        <input type="text" id="bolge_ad" name="bolge_ad" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bolge_tehlike">Tehlike Seviyesi:</label>
+                        <input type="text" id="bolge_tehlike" name="bolge_tehlike" required>
+                    </div>
+                    <input type="submit" value="Ekle">
+                </form>
+            </div>
+        </div>
+
+        <!-- Bölge Tehlike Seviyesini Güncelle Form -->
+        <h2>Bölge Tehlike Seviyesini Güncelle</h2>
+        <form action="{{ url_for('update_danger_level') }}" method="POST">
+            <div class="form-group">
+                <label for="bolge_id">Bölge Seç:</label>
+                <select id="bolge_id" name="bolge_id">
+                    {% for bolge in bolgeler %}
+                    <option value="{{ bolge['id'] }}">{{ bolge['ad'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="bolge_tehlike">Yeni Tehlike Seviyesi:</label>
+                <input type="number" id="bolge_tehlike" name="bolge_tehlike" required>
+            </div>
+            <input type="submit" value="Güncelle">
+        </form>
+
+        <h2>Yapay Veri Oluştur</h2>
+        <a href="{{ url_for('generate_fake_data_route') }}"><input type="button" value="Yapay Veri Oluştur"></a>
+
+        <h2>Genetik Algoritmayı Çalıştır</h2>
+        <a href="{{ url_for('run_genetic_algorithm_route') }}"><input type="button" value="Genetik Algoritmayı Çalıştır"></a>
+
+      <h2>Bölgeler ve Personeller</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Bölge</th>
+            <th>Tehlike Seviyesi</th>
+            <th>Güvenlik Personeli</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bolge in bolgeler %}
+        <tr>
+            <td>{{ bolge.ad }}</td>
+            <td>{{ bolge.tehlike_seviyesi }}</td> <!-- Tehlike seviyesi -->
+            <td>
+                <ul class="personnel-list">
+                    {% for personel in bolge.personeller %}
+                    <li>{{ personel[1] }}</li> <!-- Personel ad -->
+                    {% endfor %}
+                </ul>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+  <h2>Olaylar</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Bölge</th>
+                    <th>Olay Türü</th>
+                    <th>Olay Şiddeti</th>
+                    <th>Zaman</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for olay in olaylar %}
+                <tr>
+                    <td>{{ olay[0] }}</td>
+                    <td>{{ olay[1] }}</td>
+                    <td>{{ olay[2] }}</td>
+                    <td>{{ olay[3] }}</td>
+                    <td>{{ olay[4] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Personeller</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Ad</th>
+                    <th>Müdahale Süresi</th>
+                    <th>Başarı</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for personel in personeller %}
+                <tr>
+                    <td>{{ personel[0] }}</td>
+                    <td>{{ personel[1] }}</td>
+                    <td>{{ personel[2] }}</td>
+                    <td>{{ personel[3] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Personel Atamaları</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Personel</th>
+                    <th>Bölge</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for atama in atamalar %}
+                <tr>
+                   <td>{{ atama[0] }}</td>
+                    <td>{{ atama[1] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
