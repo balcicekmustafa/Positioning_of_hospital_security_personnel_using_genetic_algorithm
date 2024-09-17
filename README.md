@@ -69,8 +69,6 @@ The project requires the following Python packages:
 - matplotlib
 - MySQL connector (or another SQL database connector if using a different database)
 
-For the full list of dependencies, refer to the `requirements.txt` file.
-
 ## Brief Overview of Project Functionality
 
 This project provides a dynamic and automated deployment of hospital security personnel to effectively respond to incidents. Key features include:
