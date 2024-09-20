@@ -45,4 +45,13 @@ CREATE TABLE PersonelAtama (
     FOREIGN KEY (bolge_id) REFERENCES Bolge(id)
 );
 
+CREATE TABLE Olay_Personel (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    olay_id INT,
+    personel_id INT,
+    mudahale_suresi FLOAT,
+    basari INT,
+    FOREIGN KEY (olay_id) REFERENCES Olay(id),
+    FOREIGN KEY (personel_id) REFERENCES Personel(id)
+);
 
