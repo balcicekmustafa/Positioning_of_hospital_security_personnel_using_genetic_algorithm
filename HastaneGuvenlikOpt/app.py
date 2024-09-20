@@ -11,7 +11,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'admin_login'
 
-# MySQL bağlantısı
+# MySQL bağlantısı(If you want to run this project you have to write your DB password to field of password)
 conn = mysql.connector.connect(
     host="localhost",
     user="root",
@@ -211,22 +211,21 @@ def update_personel_atamalari(best_individual, bolge_list, personel_list):
 def update_personel_score(personel_id, sure_degisim, basari_degisim):
     cursor.execute("SELECT sure, basari FROM Personel WHERE id=%s", (personel_id,))
     personel = cursor.fetchone()
-    yeni_sure = personel[0] + sure_degisim
-    yeni_basari = personel[1] + basari_degisim
-    cursor.execute("UPDATE Personel SET sure=%s, basari=%s WHERE id=%s", (yeni_sure, yeni_basari, personel_id))
-    conn.commit()
+    if personel:
+        yeni_sure = personel[0] + sure_degisim
+        yeni_basari = personel[1] + basari_degisim
+        cursor.execute("UPDATE Personel SET sure=%s, basari=%s WHERE id=%s", (yeni_sure, yeni_basari, personel_id))
+        conn.commit()
+
 # Yeni olay eklendiğinde bölgenin tehlike seviyesini güncelle
 @app.route('/update_danger_level', methods=['POST'])
 def update_danger_level():
-    # Get the form data
     bolge_id = request.form['bolge_id']
     bolge_tehlike = request.form['bolge_tehlike']
 
-    # Update the danger level of the selected region in the database
     cursor.execute("UPDATE Bolge SET tehlike_seviyesi = %s WHERE id = %s", (bolge_tehlike, bolge_id))
     conn.commit()
 
-    # Redirect back to the homepage after updating
     return redirect(url_for('index'))
 
 @app.route('/')
@@ -241,15 +240,33 @@ def index():
     """)
     olaylar = cursor.fetchall()
 
-    # personel verilerini eşleme
+    # Her olay için personelleri al
+    olaylar_detay = []
+    for olay in olaylar:
+        olay_id = olay[0]
+        cursor.execute("""
+            SELECT Personel.ad 
+            FROM Olay_Personel
+            JOIN Personel ON Olay_Personel.personel_id = Personel.id
+            WHERE Olay_Personel.olay_id = %s
+        """, (olay_id,))
+        personeller = cursor.fetchall()
+        olaylar_detay.append({
+            'id': olay[0],
+            'bolge_ad': olay[1],
+            'olay_turu': olay[2],
+            'olay_siddeti': olay[3],
+            'zaman': olay[4],
+            'personeller': [p[0] for p in personeller]
+        })
+
+    # Diğer veriler
     cursor.execute("SELECT * FROM Personel")
     personeller = cursor.fetchall()
 
-    # bölgeler ve tehlike seviyelerini eşleme
     cursor.execute("SELECT id, ad, tehlike_seviyesi FROM Bolge ORDER BY tehlike_seviyesi DESC")
     bolgeler = cursor.fetchall()
 
-    # personel ve görevlendirildiği bölgeyi eşleme
     bolgeler_with_personel = []
     for bolge in bolgeler:
         cursor.execute("""
@@ -281,7 +298,7 @@ def index():
     """)
     personel_siralamasi = cursor.fetchall()
 
-    return render_template('index.html', olaylar=olaylar, personeller=personeller, bolgeler=bolgeler_with_personel, olay_turleri=olay_turleri, atamalar=atamalar, personel_siralamasi=personel_siralamasi)
+    return render_template('index.html', olaylar=olaylar_detay, personeller=personeller, bolgeler=bolgeler_with_personel, olay_turleri=olay_turleri, atamalar=atamalar, personel_siralamasi=personel_siralamasi)
 
 # Yeni olay ekleme
 @app.route('/add_olay', methods=['POST'])
@@ -289,21 +306,35 @@ def add_olay():
     bolge_id = int(request.form['bolge_id'])
     olay_turu_id = int(request.form['olay_turu_id'])
     olay_siddeti = int(request.form['olay_siddeti'])
-    zaman = int(request.form['zaman'])
-    personel_id = int(request.form['personel_id'])
-    sure = float(request.form['sure'])
-    basari = int(request.form['basari'])
+    zaman = request.form['zaman']  # Saat formatında olduğu için integer değil string alıyoruz
+    personel_ids = request.form.getlist('personel_id')  # Birden fazla personel seçimi için
 
     # Olay tablosuna yeni durumu ekleme
-    cursor.execute("INSERT INTO Olay (bolge_id, olay_turu_id, olay_siddeti, zaman) VALUES (%s, %s, %s, %s)",
-                   (bolge_id, olay_turu_id, olay_siddeti, zaman))
-    conn.commit()
+    cursor.execute(
+        "INSERT INTO Olay (bolge_id, olay_turu_id, olay_siddeti, zaman) VALUES (%s, %s, %s, %s)",
+        (bolge_id, olay_turu_id, olay_siddeti, zaman)
+    )
+    olay_id = cursor.lastrowid  # Eklenen olayın ID'sini al
 
-    # Güvenlik personelinin skorunu güncelleme
-    update_personel_score(personel_id, sure, basari)
+    for personel_id in personel_ids:
+        personel_id = int(personel_id)
+
+        # Formdan her personel için müdahale süresi ve başarı puanını çekiyoruz
+        sure_field = f'sure_{personel_id}'
+        basari_field = f'basari_{personel_id}'
+
+        # Güvenlik personelinin müdahale süresi ve başarı puanını al
+        sure = float(request.form.get(sure_field, 0))
+        basari = int(request.form.get(basari_field, 0))
+
+        # Olay ile personelin ilişkisini Olay_Personel tablosuna ekle
+        cursor.execute("INSERT INTO Olay_Personel (olay_id, personel_id) VALUES (%s, %s)", (olay_id, personel_id))
+
+        # Güvenlik personelinin skorunu güncelleme
+        update_personel_score(personel_id, sure, basari)
 
     # Bölgenin tehlike seviyesini olay şiddetine göre arttırmak
-    danger_increment = olay_siddeti  # You can adjust this to a fixed increment if needed (e.g., danger_increment = 1)
+    danger_increment = olay_siddeti
 
     cursor.execute("SELECT tehlike_seviyesi FROM Bolge WHERE id = %s", (bolge_id,))
     current_danger_level = cursor.fetchone()[0]
@@ -317,27 +348,21 @@ def add_olay():
     return redirect(url_for('index'))
 
 
-
 @app.route('/add_personel', methods=['POST'])
 def add_personel():
     personel_ad = request.form['personel_ad']
     personel_sure = float(request.form['personel_sure'])
     personel_basari = int(request.form['personel_basari'])
-
     cursor.execute("INSERT INTO Personel (ad, sure, basari) VALUES (%s, %s, %s)", (personel_ad, personel_sure, personel_basari))
     conn.commit()
-
     return redirect(url_for('index'))
-
 
 @app.route('/add_bolge', methods=['POST'])
 def add_bolge():
     bolge_ad = request.form['bolge_ad']
     bolge_tehlike = int(request.form['bolge_tehlike'])
-
     cursor.execute("INSERT INTO Bolge (ad, tehlike_seviyesi) VALUES (%s, %s)", (bolge_ad, bolge_tehlike))
     conn.commit()
-
     return redirect(url_for('index'))
 
 
@@ -361,8 +386,5 @@ def run_genetic_algorithm_route():
     update_personel_atamalari(best_individual, bolge_list, personel_list)
 
     return redirect(url_for('index'))
-
-
-
 if __name__ == '__main__':
     app.run(debug=True)
