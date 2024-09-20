@@ -124,25 +124,75 @@
                         <label for="zaman">Saat:</label>
                         <input type="text" id="zaman" name="zaman" placeholder="HH:MM" required>
                     </div>
-                    <div class="form-group">
-                        <label for="personel_id">Personel:</label>
-                        <select id="personel_id" name="personel_id">
-                            {% for personel in personeller %}
-                            <option value="{{ personel[0] }}">{{ personel[1] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="sure">Müdahale Süresi (Dakika):</label>
-                        <input type="number" id="sure" name="sure" min="1" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="basari">Başarı:</label>
-                        <input type="number" id="basari" name="basari" min="1" max="10" required>
-                    </div>
+                   <div class="form-group">
+            <label for="personel_id">Personeller:</label>
+            <select id="personel_id" name="personel_id" multiple>
+                {% for personel in personeller %}
+                <option value="{{ personel[0] }}">{{ personel[1] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div id="personel-details">
+            <!-- Seçilen personeller için müdahale süresi ve başarı puanı giriş alanları burada dinamik olarak eklenecek -->
+        </div>
+
+
                     <input type="submit" value="Ekle">
                 </form>
             </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const personelSelect = document.getElementById('personel_id');
+        const personelDetails = document.getElementById('personel-details');
+
+        personelSelect.addEventListener('change', function() {
+            // Mevcut detayları temizle
+            personelDetails.innerHTML = '';
+
+            // Seçilen personelleri al
+            const selectedOptions = Array.from(personelSelect.selectedOptions);
+            selectedOptions.forEach(option => {
+                const personelId = option.value;
+                const personelName = option.text;
+
+                // Müdahale Süresi Alanı
+                const sureDiv = document.createElement('div');
+                sureDiv.classList.add('form-group');
+                const sureLabel = document.createElement('label');
+                sureLabel.setAttribute('for', `sure_${personelId}`);
+                sureLabel.innerText = `${personelName} için Müdahale Süresi (Dakika):`;
+                const sureInput = document.createElement('input');
+                sureInput.setAttribute('type', 'number');
+                sureInput.setAttribute('name', `sure_${personelId}`);
+                sureInput.setAttribute('id', `sure_${personelId}`);
+                sureInput.setAttribute('min', '1');
+                sureInput.setAttribute('required', 'required');
+                sureDiv.appendChild(sureLabel);
+                sureDiv.appendChild(sureInput);
+
+                // Başarı Puanı Alanı
+                const basariDiv = document.createElement('div');
+                basariDiv.classList.add('form-group');
+                const basariLabel = document.createElement('label');
+                basariLabel.setAttribute('for', `basari_${personelId}`);
+                basariLabel.innerText = `${personelName} için Başarı:`;
+                const basariInput = document.createElement('input');
+                basariInput.setAttribute('type', 'number');
+                basariInput.setAttribute('name', `basari_${personelId}`);
+                basariInput.setAttribute('id', `basari_${personelId}`);
+                basariInput.setAttribute('min', '1');
+                basariInput.setAttribute('max', '10');
+                basariInput.setAttribute('required', 'required');
+                basariDiv.appendChild(basariLabel);
+                basariDiv.appendChild(basariInput);
+
+                // Detayları form alanına ekle
+                personelDetails.appendChild(sureDiv);
+                personelDetails.appendChild(basariDiv);
+            });
+        });
+    });
+</script>
 
             <!-- Yeni Güvenlik Personeli Ekle Form -->
             <div class="form-box">
@@ -231,28 +281,36 @@
     </tbody>
 </table>
   <h2>Olaylar</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Bölge</th>
-                    <th>Olay Türü</th>
-                    <th>Olay Şiddeti</th>
-                    <th>Zaman</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for olay in olaylar %}
-                <tr>
-                    <td>{{ olay[0] }}</td>
-                    <td>{{ olay[1] }}</td>
-                    <td>{{ olay[2] }}</td>
-                    <td>{{ olay[3] }}</td>
-                    <td>{{ olay[4] }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Bölge</th>
+            <th>Olay Türü</th>
+            <th>Olay Şiddeti</th>
+            <th>Zaman</th>
+            <th>Personeller</th> <!-- Yeni Sütun -->
+        </tr>
+    </thead>
+    <tbody>
+        {% for olay in olaylar %}
+        <tr>
+            <td>{{ olay.id }}</td>
+            <td>{{ olay.bolge_ad }}</td>
+            <td>{{ olay.olay_turu }}</td>
+            <td>{{ olay.olay_siddeti }}</td>
+            <td>{{ olay.zaman }}</td>
+            <td>
+                <ul>
+                    {% for personel in olay.personeller %}
+                    <li>{{ personel }}</li>
+                    {% endfor %}
+                </ul>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
         <h2>Personeller</h2>
         <table>
