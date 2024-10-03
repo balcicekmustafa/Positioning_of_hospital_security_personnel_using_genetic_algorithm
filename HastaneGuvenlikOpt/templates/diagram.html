@@ -46,7 +46,7 @@
                 <ul>
                     {% if bolge.personeller %}
                         {% for personel in bolge.personeller %}
-                            <li>{{ personel[1] }}</li>
+                            <li>{{ personel[1] }} (Başarı: {{ personel[2] }})</li>
                         {% endfor %}
                     {% else %}
                         <li>Personel Atanmamış</li>

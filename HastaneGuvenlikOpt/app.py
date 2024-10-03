@@ -463,7 +463,8 @@ def diagram():
     bolgeler_with_personel = []
     for bolge in bolgeler:
         g.cursor.execute("""
-            SELECT Personel.id, Personel.ad FROM PersonelAtama
+            SELECT Personel.id, Personel.ad, Personel.basari
+            FROM PersonelAtama
             JOIN Personel ON PersonelAtama.personel_id = Personel.id
             WHERE PersonelAtama.bolge_id = %s
         """, (bolge[0],))
