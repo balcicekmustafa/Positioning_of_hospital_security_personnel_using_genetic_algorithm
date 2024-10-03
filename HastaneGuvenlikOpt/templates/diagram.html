@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bölgeler ve Atanan Personeller Diyagramı</title>
+    <style>
+        /* Diyagram stil ayarları */
+        .diagram-container {
+            width: 80%;
+            margin: auto;
+            text-align: center;
+        }
+        .node {
+            display: inline-block;
+            vertical-align: top;
+            margin: 20px;
+            padding: 10px;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 200px;
+        }
+        .node h3 {
+            margin-top: 0;
+        }
+        /* Diğer stil ayarları */
+        a {
+            color: #333;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagram-container">
+        <h1>Bölgeler ve Atanan Personeller Diyagramı</h1>
+        <p><a href="{{ url_for('index') }}">Ana Sayfaya Dön</a></p>
+
+        {% for bolge in bolgeler %}
+            <div class="node">
+                <h3>{{ bolge.ad }}</h3>
+                <p>Tehlike Seviyesi: {{ bolge.tehlike_seviyesi }}</p>
+                <p>Atanan Personeller:</p>
+                <ul>
+                    {% if bolge.personeller %}
+                        {% for personel in bolge.personeller %}
+                            <li>{{ personel[1] }}</li>
+                        {% endfor %}
+                    {% else %}
+                        <li>Personel Atanmamış</li>
+                    {% endif %}
+                </ul>
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
