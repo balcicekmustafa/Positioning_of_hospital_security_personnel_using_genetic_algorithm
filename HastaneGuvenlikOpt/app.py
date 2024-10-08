@@ -5,6 +5,8 @@ import random
 import pandas as pd
 from deap import base, creator, tools, algorithms
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required, UserMixin
+from datetime import datetime, timedelta
+
 app = Flask(__name__)
 app.secret_key='your_secret_key'
 login_manager = LoginManager()
@@ -99,7 +101,6 @@ def logout():
 
 # Yapay veri üretimi
 def generate_fake_data():
-    # İstek bağlamı dışında olduğumuz için kendi bağlantımızı oluşturuyoruz
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -116,7 +117,8 @@ def generate_fake_data():
     # Bölge ekleme
     bolgeler = ['Acil Servis', 'Cerrahi', 'Yoğun Bakım', 'Poliklinik', 'Yemekhane']
     for bolge in bolgeler:
-        cursor.execute("INSERT INTO Bolge (ad) VALUES (%s)", (bolge,))
+        tehlike_seviyesi = random.randint(1, 10)  # Python ile rastgele bir tehlike seviyesi oluştur
+        cursor.execute("INSERT INTO Bolge (ad, tehlike_seviyesi) VALUES (%s, %s)", (bolge, tehlike_seviyesi))
 
     # Personel ekleme
     personeller = ['Güvenlik 1', 'Güvenlik 2', 'Güvenlik 3', 'Güvenlik 4', 'Güvenlik 5']
@@ -136,13 +138,19 @@ def generate_fake_data():
         olay_sikligi = random.randint(5, 20)
         for _ in range(olay_sikligi):
             olay_turu_id, carpan = random.choice(olay_turu_data)
-            zaman = random.randint(1, 24)
+
+            # Generate a random date and time within the last 30 days
+            random_hours = random.randint(0, 24 * 30)
+            zaman = datetime.now() - timedelta(hours=random_hours)
+
+            # Sadece bolge_id, olay_turu_id, olay_siddeti, ve zaman sütunlarına veri ekliyoruz
             cursor.execute("INSERT INTO Olay (bolge_id, olay_turu_id, olay_siddeti, zaman) VALUES (%s, %s, %s, %s)",
                            (bolge_id, olay_turu_id, olay_siddeti, zaman))
 
     conn.commit()
     cursor.close()
     conn.close()
+
 
 # Yapay veri oluşturma rotası
 @app.route('/generate_fake_data')
@@ -326,52 +334,59 @@ def index():
     return render_template('index.html', olaylar=olaylar_detay, personeller=personeller, bolgeler=bolgeler_with_personel, olay_turleri=olay_turleri, atamalar=atamalar, personel_siralamasi=personel_siralamasi)
 
 # Yeni olay ekleme
+
 @app.route('/add_olay', methods=['POST'])
 @login_required
 def add_olay():
     bolge_id = int(request.form['bolge_id'])
     olay_turu_id = int(request.form['olay_turu_id'])
     olay_siddeti = int(request.form['olay_siddeti'])
-    zaman = request.form['zaman']
+    zaman_str = request.form['zaman']
+
+    # Datetime verisini formdan alıp parse ediyoruz
+    zaman = datetime.strptime(zaman_str, '%Y-%m-%dT%H:%M')
+
     personel_ids = request.form.getlist('personel_id')
 
-    # Olay tablosuna yeni durumu ekleme
+    # Olay tablosuna yeni durumu ekleme (mudahale_suresi ve basari sütunlarını daha sonra ekleyeceğiz)
     g.cursor.execute(
         "INSERT INTO Olay (bolge_id, olay_turu_id, olay_siddeti, zaman) VALUES (%s, %s, %s, %s)",
         (bolge_id, olay_turu_id, olay_siddeti, zaman)
     )
     olay_id = g.cursor.lastrowid
 
+    # Her bir personel için müdahale süresi ve başarıyı alıp ekliyoruz
     for personel_id in personel_ids:
         personel_id = int(personel_id)
 
-        # Formdan her personel için müdahale süresi ve başarı puanını çekiyoruz
+        # Formdan her personel için müdahale süresi ve başarı puanını alıyoruz
         sure_field = f'sure_{personel_id}'
         basari_field = f'basari_{personel_id}'
 
-        # Güvenlik personelinin müdahale süresi ve başarı puanını al
-        sure = float(request.form.get(sure_field, 0))
+        # Formdan gelen müdahale süresi ve başarı değerlerini alıyoruz
+        mudahale_suresi = float(request.form.get(sure_field, 0))
         basari = int(request.form.get(basari_field, 0))
 
-        # Olay ile personelin ilişkisini Olay_Personel tablosuna ekle
-        g.cursor.execute("INSERT INTO Olay_Personel (olay_id, personel_id) VALUES (%s, %s)", (olay_id, personel_id))
+        # Olay_Personel tablosuna her personel ve olay ilişkisinin eklenmesi
+        g.cursor.execute(
+            "INSERT INTO Olay_Personel (olay_id, personel_id, mudahale_suresi, basari) VALUES (%s, %s, %s, %s)",
+            (olay_id, personel_id, mudahale_suresi, basari))
 
-        # Güvenlik personelinin skorunu güncelleme
-        update_personel_score(personel_id, sure, basari)
+        # Personelin başarı ve süre skorunu güncelleme
+        update_personel_score(personel_id, mudahale_suresi, basari)
 
-    # Bölgenin tehlike seviyesini olay şiddetine göre arttırmak
+    # Olay bölgesinin tehlike seviyesini artırıyoruz
     danger_increment = olay_siddeti
-
     g.cursor.execute("SELECT tehlike_seviyesi FROM Bolge WHERE id = %s", (bolge_id,))
     current_danger_level = g.cursor.fetchone()[0]
-
     new_danger_level = current_danger_level + danger_increment
 
-    # Tehlike seviyesinin güncellenmesi
+    # Bölgenin tehlike seviyesini güncelle
     g.cursor.execute("UPDATE Bolge SET tehlike_seviyesi = %s WHERE id = %s", (new_danger_level, bolge_id))
     g.conn.commit()
 
     return redirect(url_for('index'))
+
 
 def update_personel_score(personel_id, sure_degisim, basari_degisim):
     g.cursor.execute("SELECT sure, basari FROM Personel WHERE id=%s", (personel_id,))
