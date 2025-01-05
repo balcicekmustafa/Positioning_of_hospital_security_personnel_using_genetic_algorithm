@@ -67,6 +67,7 @@ The project requires the following Python packages:
 - pandas
 - sklearn
 - matplotlib
+- DEAP
 - MySQL connector (or another SQL database connector if using a different database)
 
 ## Brief Overview of Project Functionality
